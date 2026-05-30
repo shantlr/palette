@@ -1,0 +1,37 @@
+[
+    {
+        "name": "IP Address",
+        "description": "Show local and public IP",
+        "script": "echo \"Local: $(ipconfig getifaddr en0)\nPublic: $(curl -s ifconfig.me)\"",
+        "icon": "network",
+        "shortcut": null
+    },
+    {
+        "name": "Git Status",
+        "description": "Show git status of current directory",
+        "script": "cd ~ && git status 2>/dev/null || echo 'Not a git repo'",
+        "icon": "arrow.triangle.branch",
+        "shortcut": null
+    },
+    {
+        "name": "Top Processes",
+        "description": "Show top 5 CPU-consuming processes",
+        "script": "ps aux | sort -nrk 3,3 | head -5 | awk '{printf \"%-6s %-4s%% %s\\n\", $2, $3, $11}'",
+        "icon": "cpu",
+        "shortcut": null
+    },
+    {
+        "name": "Empty Trash",
+        "description": "Empty the macOS trash",
+        "script": "rm -rf ~/.Trash/* && echo 'Trash emptied'",
+        "icon": "trash",
+        "shortcut": null
+    },
+    {
+        "name": "Lock Screen",
+        "description": "Lock the screen immediately",
+        "script": "pmset displaysleepnow",
+        "icon": "lock",
+        "shortcut": null
+    }
+]
