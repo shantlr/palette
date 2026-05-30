@@ -17,11 +17,14 @@ struct PaletteView: View {
     @State private var lastResult: CommandResult?
     @State private var isRunning = false
     @State private var mode: PaletteMode = .browse
-
+    @State private var gridRefreshID = UUID()
+    @State private var draggedCommandID: String?
+    @State private var dropTargetID: String?
     private let columns = 4
 
     private var addCardIndex: Int { filteredCommands.count }
     private var totalItems: Int { filteredCommands.count + 1 }
+    private var canReorder: Bool { searchText.isEmpty && mode == .browse }
 
     var filteredCommands: [Command] {
         if searchText.isEmpty { return registry.commands }
@@ -86,9 +89,22 @@ struct PaletteView: View {
             lastResult = nil
             mode = .browse
         }
+        .onChange(of: lastResult != nil) { _, hasOutput in
+            NotificationCenter.default.post(name: .paletteOutputVisibilityChanged, object: hasOutput)
+        }
         .onChange(of: mode) { _, newMode in
             let modeStr = newMode == .browse ? "browse" : "other"
             NotificationCenter.default.post(name: .paletteModeChanged, object: modeStr)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .paletteCommandsChanged)) { _ in
+            gridRefreshID = UUID()
+            if selectedIndex >= totalItems {
+                selectedIndex = max(0, totalItems - 1)
+            }
+        }
+        .onChange(of: mode) { _, _ in
+            draggedCommandID = nil
+            dropTargetID = nil
         }
     }
 
@@ -129,10 +145,31 @@ struct PaletteView: View {
                 ScrollView {
                     LazyVGrid(columns: gridColumns, spacing: 8) {
                         ForEach(Array(filteredCommands.enumerated()), id: \.element.id) { index, command in
-                            CommandCard(command: command, isSelected: index == selectedIndex) {
+                            CommandCard(
+                                command: command,
+                                isSelected: index == selectedIndex,
+                                showsDropIndicator: shouldShowDropGap(before: command.id)
+                            ) {
                                 mode = .editing(command)
                             }
                             .id(index)
+                            .onDrag {
+                                draggedCommandID = command.id
+                                dropTargetID = command.id
+                                return NSItemProvider(object: command.id as NSString)
+                            } preview: {
+                                CommandCard(command: command, isSelected: index == selectedIndex) {
+                                    mode = .editing(command)
+                                }
+                                .frame(width: 140)
+                            }
+                            .dropDestination(for: String.self) { items, _ in
+                                handleDrop(items: items, targetCommandID: command.id)
+                            } isTargeted: { isTargeted in
+                                withAnimation(.easeInOut(duration: 0.12)) {
+                                    dropTargetID = isTargeted ? command.id : currentDropTargetAfterExit(from: command.id)
+                                }
+                            }
                             .onTapGesture {
                                 selectedIndex = index
                                 runSelected()
@@ -140,12 +177,23 @@ struct PaletteView: View {
                         }
 
                         // Add card at end
-                        AddCommandCard(isSelected: selectedIndex == addCardIndex)
+                        AddCommandCard(
+                            isSelected: selectedIndex == addCardIndex,
+                            showsDropIndicator: shouldShowDropGap(before: nil)
+                        )
                             .id(addCardIndex)
+                            .dropDestination(for: String.self) { items, _ in
+                                handleDrop(items: items, targetCommandID: nil)
+                            } isTargeted: { isTargeted in
+                                withAnimation(.easeInOut(duration: 0.12)) {
+                                    dropTargetID = isTargeted ? "__end__" : currentDropTargetAfterExit(from: nil)
+                                }
+                            }
                             .onTapGesture {
                                 mode = .adding
                             }
                     }
+                    .id(gridRefreshID)
                     .padding(12)
                 }
                 .onChange(of: selectedIndex) { _, newValue in
@@ -213,4 +261,47 @@ struct PaletteView: View {
             }
         }
     }
+
+    private func handleDrop(items: [String], targetCommandID: String?) -> Bool {
+        guard canReorder, let draggedCommandID = items.first else { return false }
+        guard draggedCommandID != targetCommandID else { return false }
+
+        do {
+            try registry.moveCommand(id: draggedCommandID, before: targetCommandID)
+            self.draggedCommandID = nil
+            dropTargetID = nil
+
+            if let newIndex = registry.commands.firstIndex(where: { $0.id == draggedCommandID }) {
+                selectedIndex = newIndex
+            }
+
+            return true
+        } catch {
+            self.draggedCommandID = nil
+            dropTargetID = nil
+            return false
+        }
+    }
+
+    private func shouldShowDropGap(before targetCommandID: String?) -> Bool {
+        guard canReorder, let draggedCommandID else { return false }
+
+        let normalizedTargetID = targetCommandID ?? "__end__"
+        guard dropTargetID == normalizedTargetID else { return false }
+
+        if let targetCommandID {
+            return draggedCommandID != targetCommandID
+        }
+
+        return registry.commands.last?.id != draggedCommandID
+    }
+
+    private func currentDropTargetAfterExit(from targetCommandID: String?) -> String? {
+        let normalizedTargetID = targetCommandID ?? "__end__"
+        return dropTargetID == normalizedTargetID ? nil : dropTargetID
+    }
+}
+
+extension Notification.Name {
+    static let paletteCommandsChanged = Notification.Name("paletteCommandsChanged")
 }

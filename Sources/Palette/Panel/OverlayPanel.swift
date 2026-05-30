@@ -2,9 +2,12 @@ import AppKit
 import SwiftUI
 
 final class OverlayPanel: NSPanel {
+    private static let collapsedSize = NSSize(width: 680, height: 420)
+    private static let expandedSize = NSSize(width: 680, height: 620)
+
     init(contentView: some View) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 420),
+            contentRect: NSRect(origin: .zero, size: Self.collapsedSize),
             styleMask: [.nonactivatingPanel, .titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -14,7 +17,8 @@ final class OverlayPanel: NSPanel {
         self.level = .floating
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
-        self.isMovableByWindowBackground = true
+        self.isMovable = false
+        self.isMovableByWindowBackground = false
         self.isReleasedWhenClosed = false
         self.animationBehavior = .utilityWindow
         self.backgroundColor = .clear
@@ -22,12 +26,15 @@ final class OverlayPanel: NSPanel {
 
         // Rounded corners
         self.isOpaque = false
-        self.contentView = NSHostingView(rootView:
+        let hostingView = NSHostingView(rootView:
             contentView
-                .frame(width: 680, height: 420)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(VisualEffectView())
                 .clipShape(RoundedRectangle(cornerRadius: 12))
         )
+        hostingView.frame = NSRect(origin: .zero, size: Self.collapsedSize)
+        hostingView.autoresizingMask = [.width, .height]
+        self.contentView = hostingView
 
         centerOnScreen()
     }
@@ -42,6 +49,7 @@ final class OverlayPanel: NSPanel {
 
     private var localMonitor: Any?
     private var modeObserver: Any?
+    private var outputObserver: Any?
     var isBrowseMode: Bool = true
 
     func installKeyMonitor() {
@@ -49,6 +57,12 @@ final class OverlayPanel: NSPanel {
             let isBrowse = (note.object as? String) == "browse"
             MainActor.assumeIsolated {
                 self?.isBrowseMode = isBrowse
+            }
+        }
+        outputObserver = NotificationCenter.default.addObserver(forName: .paletteOutputVisibilityChanged, object: nil, queue: .main) { [weak self] note in
+            let isExpanded = (note.object as? Bool) == true
+            MainActor.assumeIsolated {
+                self?.setExpanded(isExpanded)
             }
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -96,6 +110,10 @@ final class OverlayPanel: NSPanel {
             NotificationCenter.default.removeObserver(observer)
             modeObserver = nil
         }
+        if let observer = outputObserver {
+            NotificationCenter.default.removeObserver(observer)
+            outputObserver = nil
+        }
     }
 
     func toggle() {
@@ -120,6 +138,14 @@ final class OverlayPanel: NSPanel {
         super.resignKey()
         close()
     }
+
+    private func setExpanded(_ isExpanded: Bool) {
+        let targetSize = isExpanded ? Self.expandedSize : Self.collapsedSize
+        guard frame.size != targetSize else { return }
+
+        setContentSize(targetSize)
+        centerOnScreen()
+    }
 }
 
 extension Notification.Name {
@@ -128,6 +154,7 @@ extension Notification.Name {
     static let paletteEnterKey = Notification.Name("paletteEnterKey")
     static let paletteEscapeKey = Notification.Name("paletteEscapeKey")
     static let paletteModeChanged = Notification.Name("paletteModeChanged")
+    static let paletteOutputVisibilityChanged = Notification.Name("paletteOutputVisibilityChanged")
 }
 
 struct VisualEffectView: NSViewRepresentable {

@@ -3,6 +3,7 @@ import SwiftUI
 struct CommandCard: View {
     let command: Command
     let isSelected: Bool
+    var showsDropIndicator: Bool = false
     let onEdit: () -> Void
 
     @State private var isHovered = false
@@ -60,6 +61,11 @@ struct CommandCard: View {
         }
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(alignment: .leading) {
+            DropIndicatorBar(isVisible: showsDropIndicator)
+                .padding(.vertical, 8)
+                .padding(.leading, 3)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(isSelected ? Color.accentColor.opacity(0.5) : isHovered ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1.5)
@@ -75,6 +81,7 @@ struct CommandCard: View {
 
 struct AddCommandCard: View {
     var isSelected: Bool = false
+    var showsDropIndicator: Bool = false
 
     @State private var isHovered = false
 
@@ -94,6 +101,11 @@ struct AddCommandCard: View {
         .padding(.horizontal, 8)
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.gray.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(alignment: .leading) {
+            DropIndicatorBar(isVisible: showsDropIndicator)
+                .padding(.vertical, 8)
+                .padding(.leading, 3)
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(
@@ -107,5 +119,17 @@ struct AddCommandCard: View {
             if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
         }
         .animation(.easeInOut(duration: 0.15), value: isHovered)
+    }
+}
+
+struct DropIndicatorBar: View {
+    let isVisible: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(Color.accentColor.opacity(0.9))
+            .frame(width: 4)
+            .opacity(isVisible ? 1 : 0)
+            .animation(.easeInOut(duration: 0.12), value: isVisible)
     }
 }
