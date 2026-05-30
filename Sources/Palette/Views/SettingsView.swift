@@ -76,6 +76,18 @@ struct SettingsView: View {
                         .background(.black.opacity(0.2))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Screen brush shortcut")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text("⌘ ⇧ 6")
+                        .font(.system(.body, design: .monospaced))
+                        .padding(8)
+                        .background(.black.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
             }
             .padding(16)
 
