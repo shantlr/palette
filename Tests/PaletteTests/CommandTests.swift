@@ -7,6 +7,7 @@ import Foundation
     {
         "name": "Test",
         "description": "A test command",
+        "section": "Yabai",
         "script": "echo hello",
         "icon": "star",
         "shortcut": null
@@ -17,13 +18,15 @@ import Foundation
     #expect(command.name == "Test")
     #expect(command.script == "echo hello")
     #expect(command.icon == "star")
+    #expect(command.section == "Yabai")
     #expect(command.id == "Test")
 }
 
 @Test func commandEncodesRoundTrip() throws {
-    let command = Command(name: "Foo", description: "Bar", script: "ls", icon: nil, shortcut: "cmd+f")
+    let command = Command(name: "Foo", description: "Bar", section: "Shell", script: "ls", icon: nil, shortcut: "cmd+f")
     let data = try JSONEncoder().encode(command)
     let decoded = try JSONDecoder().decode(Command.self, from: data)
     #expect(decoded.name == command.name)
+    #expect(decoded.section == "Shell")
     #expect(decoded.shortcut == "cmd+f")
 }

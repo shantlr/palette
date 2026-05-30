@@ -20,7 +20,7 @@ struct PaletteView: View {
     @State private var gridRefreshID = UUID()
     @State private var draggedCommandID: String?
     @State private var dropTargetID: String?
-    private let columns = 4
+    private let columns = 6
 
     private var addCardIndex: Int { filteredCommands.count }
     private var totalItems: Int { filteredCommands.count + 1 }
@@ -30,8 +30,55 @@ struct PaletteView: View {
         if searchText.isEmpty { return registry.commands }
         return registry.commands.filter {
             $0.name.localizedCaseInsensitiveContains(searchText) ||
-            $0.description.localizedCaseInsensitiveContains(searchText)
+            $0.description.localizedCaseInsensitiveContains(searchText) ||
+            ($0.normalizedSection?.localizedCaseInsensitiveContains(searchText) ?? false)
         }
+    }
+
+    private var groupedCommands: [(section: String?, commands: [Command])] {
+        var grouped: [(section: String?, commands: [Command])] = []
+
+        for command in filteredCommands {
+            let section = command.normalizedSection
+
+            if let index = grouped.firstIndex(where: { $0.section == section }) {
+                grouped[index].commands.append(command)
+            } else {
+                grouped.append((section, [command]))
+            }
+        }
+
+        return grouped
+    }
+
+    private func commandIndex(for command: Command) -> Int? {
+        filteredCommands.firstIndex(where: { $0.id == command.id })
+    }
+
+    private var visibleRows: [[Int]] {
+        var rows: [[Int]] = []
+
+        for group in groupedCommands {
+            let indices = group.commands.compactMap(commandIndex(for:))
+
+            stride(from: 0, to: indices.count, by: columns).forEach { start in
+                let end = min(start + columns, indices.count)
+                rows.append(Array(indices[start..<end]))
+            }
+        }
+
+        rows.append([addCardIndex])
+        return rows
+    }
+
+    private func selectionPosition(for index: Int) -> (row: Int, column: Int)? {
+        for (rowIndex, row) in visibleRows.enumerated() {
+            if let columnIndex = row.firstIndex(of: index) {
+                return (rowIndex, columnIndex)
+            }
+        }
+
+        return nil
     }
 
     private var gridColumns: [GridItem] {
@@ -143,58 +190,81 @@ struct PaletteView: View {
             // Command grid
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVGrid(columns: gridColumns, spacing: 8) {
-                        ForEach(Array(filteredCommands.enumerated()), id: \.element.id) { index, command in
-                            CommandCard(
-                                command: command,
-                                isSelected: index == selectedIndex,
-                                showsDropIndicator: shouldShowDropGap(before: command.id)
-                            ) {
-                                mode = .editing(command)
-                            }
-                            .id(index)
-                            .onDrag {
-                                draggedCommandID = command.id
-                                dropTargetID = command.id
-                                return NSItemProvider(object: command.id as NSString)
-                            } preview: {
-                                CommandCard(command: command, isSelected: index == selectedIndex) {
-                                    mode = .editing(command)
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(groupedCommands.enumerated()), id: \.offset) { _, group in
+                            VStack(alignment: .leading, spacing: 6) {
+                                if let section = group.section {
+                                    HStack(spacing: 10) {
+                                        Text(section)
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(.primary)
+
+                                        Rectangle()
+                                            .fill(Color.white.opacity(0.08))
+                                            .frame(height: 1)
+                                    }
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 2)
                                 }
-                                .frame(width: 140)
-                            }
-                            .dropDestination(for: String.self) { items, _ in
-                                handleDrop(items: items, targetCommandID: command.id)
-                            } isTargeted: { isTargeted in
-                                withAnimation(.easeInOut(duration: 0.12)) {
-                                    dropTargetID = isTargeted ? command.id : currentDropTargetAfterExit(from: command.id)
+
+                                LazyVGrid(columns: gridColumns, spacing: 8) {
+                                    ForEach(group.commands, id: \.id) { command in
+                                        if let index = commandIndex(for: command) {
+                                            CommandCard(
+                                                command: command,
+                                                isSelected: index == selectedIndex,
+                                                showsDropIndicator: shouldShowDropGap(before: command.id)
+                                            ) {
+                                                mode = .editing(command)
+                                            }
+                                            .id(index)
+                                            .onDrag {
+                                                draggedCommandID = command.id
+                                                dropTargetID = command.id
+                                                return NSItemProvider(object: command.id as NSString)
+                                            } preview: {
+                                                CommandCard(command: command, isSelected: index == selectedIndex) {
+                                                    mode = .editing(command)
+                                                }
+                                                .frame(width: 102)
+                                            }
+                                            .dropDestination(for: String.self) { items, _ in
+                                                handleDrop(items: items, targetCommandID: command.id)
+                                            } isTargeted: { isTargeted in
+                                                withAnimation(.easeInOut(duration: 0.12)) {
+                                                    dropTargetID = isTargeted ? command.id : currentDropTargetAfterExit(from: command.id)
+                                                }
+                                            }
+                                            .onTapGesture {
+                                                selectedIndex = index
+                                                runSelected()
+                                            }
+                                        }
+                                    }
                                 }
-                            }
-                            .onTapGesture {
-                                selectedIndex = index
-                                runSelected()
                             }
                         }
 
-                        // Add card at end
-                        AddCommandCard(
-                            isSelected: selectedIndex == addCardIndex,
-                            showsDropIndicator: shouldShowDropGap(before: nil)
-                        )
-                            .id(addCardIndex)
-                            .dropDestination(for: String.self) { items, _ in
-                                handleDrop(items: items, targetCommandID: nil)
-                            } isTargeted: { isTargeted in
-                                withAnimation(.easeInOut(duration: 0.12)) {
-                                    dropTargetID = isTargeted ? "__end__" : currentDropTargetAfterExit(from: nil)
+                        LazyVGrid(columns: gridColumns, spacing: 8) {
+                            AddCommandCard(
+                                isSelected: selectedIndex == addCardIndex,
+                                showsDropIndicator: shouldShowDropGap(before: nil)
+                            )
+                                .id(addCardIndex)
+                                .dropDestination(for: String.self) { items, _ in
+                                    handleDrop(items: items, targetCommandID: nil)
+                                } isTargeted: { isTargeted in
+                                    withAnimation(.easeInOut(duration: 0.12)) {
+                                        dropTargetID = isTargeted ? "__end__" : currentDropTargetAfterExit(from: nil)
+                                    }
                                 }
-                            }
-                            .onTapGesture {
-                                mode = .adding
-                            }
+                                .onTapGesture {
+                                    mode = .adding
+                                }
+                        }
                     }
                     .id(gridRefreshID)
-                    .padding(12)
+                    .padding(10)
                 }
                 .onChange(of: selectedIndex) { _, newValue in
                     proxy.scrollTo(newValue)
@@ -220,11 +290,9 @@ struct PaletteView: View {
             case "right":
                 if selectedIndex < totalItems - 1 { selectedIndex += 1 }
             case "up":
-                let newIndex = selectedIndex - columns
-                if newIndex >= 0 { selectedIndex = newIndex }
+                moveSelectionVertically(-1)
             case "down":
-                let newIndex = selectedIndex + columns
-                if newIndex < totalItems { selectedIndex = newIndex }
+                moveSelectionVertically(1)
             default: break
             }
         }
@@ -250,7 +318,7 @@ struct PaletteView: View {
             do {
                 let result = try await runner.run(command)
                 await MainActor.run {
-                    lastResult = result
+                    lastResult = shouldShowResult(result) ? result : nil
                     isRunning = false
                 }
             } catch {
@@ -299,6 +367,22 @@ struct PaletteView: View {
     private func currentDropTargetAfterExit(from targetCommandID: String?) -> String? {
         let normalizedTargetID = targetCommandID ?? "__end__"
         return dropTargetID == normalizedTargetID ? nil : dropTargetID
+    }
+
+    private func moveSelectionVertically(_ direction: Int) {
+        guard let position = selectionPosition(for: selectedIndex) else { return }
+
+        let targetRow = position.row + direction
+        guard visibleRows.indices.contains(targetRow) else { return }
+
+        let row = visibleRows[targetRow]
+        selectedIndex = row[min(position.column, row.count - 1)]
+    }
+
+    private func shouldShowResult(_ result: CommandResult) -> Bool {
+        if result.exitCode != 0 { return true }
+        if !result.error.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        return !result.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 

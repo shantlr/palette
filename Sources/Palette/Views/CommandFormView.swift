@@ -8,6 +8,7 @@ struct CommandFormView: View {
 
     @State private var name: String
     @State private var desc: String
+    @State private var section: String
     @State private var script: String
     @State private var icon: String
     @State private var showIconPicker = false
@@ -19,6 +20,7 @@ struct CommandFormView: View {
         self.onDelete = onDelete
         _name = State(initialValue: existing?.name ?? "")
         _desc = State(initialValue: existing?.description ?? "")
+        _section = State(initialValue: existing?.section ?? "")
         _script = State(initialValue: existing?.script ?? "")
         _icon = State(initialValue: existing?.icon ?? "terminal")
     }
@@ -60,6 +62,12 @@ struct CommandFormView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Description").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         TextField("What this command does", text: $desc)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Section").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        TextField("Yabai", text: $section)
                             .textFieldStyle(.roundedBorder)
                     }
 
@@ -124,6 +132,7 @@ struct CommandFormView: View {
                     let command = Command(
                         name: name.trimmingCharacters(in: .whitespaces),
                         description: desc.trimmingCharacters(in: .whitespaces),
+                        section: section.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : section.trimmingCharacters(in: .whitespacesAndNewlines),
                         script: script,
                         icon: icon.isEmpty ? nil : icon,
                         shortcut: existing?.shortcut

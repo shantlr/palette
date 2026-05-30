@@ -8,6 +8,7 @@ let package = Package(
         .executableTarget(
             name: "Palette",
             path: "Sources/Palette",
+            exclude: ["Info.plist"],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",

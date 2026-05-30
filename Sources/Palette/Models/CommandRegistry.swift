@@ -94,6 +94,7 @@ final class CommandRegistry: ObservableObject {
         Command(
             name: "Say Hello",
             description: "Print a greeting",
+            section: nil,
             script: "echo 'Hello from Palette!'",
             icon: "hand.wave",
             shortcut: nil
@@ -101,6 +102,7 @@ final class CommandRegistry: ObservableObject {
         Command(
             name: "Date",
             description: "Show current date and time",
+            section: nil,
             script: "date",
             icon: "calendar",
             shortcut: nil
@@ -108,6 +110,7 @@ final class CommandRegistry: ObservableObject {
         Command(
             name: "Disk Usage",
             description: "Show disk usage summary",
+            section: nil,
             script: "df -h | head -5",
             icon: "internaldrive",
             shortcut: nil

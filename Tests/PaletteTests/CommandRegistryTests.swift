@@ -23,7 +23,7 @@ import Foundation
 
     let file = tmp.appendingPathComponent("commands.json")
     let json = """
-    [{"name":"Custom","description":"Custom cmd","script":"whoami","icon":null,"shortcut":null}]
+    [{"name":"Custom","description":"Custom cmd","section":"Yabai","script":"whoami","icon":null,"shortcut":null}]
     """.data(using: .utf8)!
     try json.write(to: file)
 
@@ -32,6 +32,7 @@ import Foundation
 
     #expect(await registry.commands.count == 1)
     #expect(await registry.commands[0].name == "Custom")
+    #expect(await registry.commands[0].section == "Yabai")
 
     try? FileManager.default.removeItem(at: tmp)
 }
@@ -43,7 +44,7 @@ import Foundation
 
     let file = tmp.appendingPathComponent("commands.json")
     let original = """
-    [{"name":"One","description":"First","script":"date","icon":null,"shortcut":null}]
+    [{"name":"One","description":"First","section":null,"script":"date","icon":null,"shortcut":null}]
     """.data(using: .utf8)!
     try original.write(to: file)
 
@@ -51,7 +52,7 @@ import Foundation
     try await registry.load()
 
     let updated = """
-    [{"name":"Two","description":"Second","script":"whoami","icon":null,"shortcut":null}]
+    [{"name":"Two","description":"Second","section":"Ops","script":"whoami","icon":null,"shortcut":null}]
     """.data(using: .utf8)!
     try updated.write(to: file)
 
@@ -59,6 +60,7 @@ import Foundation
 
     #expect(await registry.commands.count == 1)
     #expect(await registry.commands[0].name == "Two")
+    #expect(await registry.commands[0].section == "Ops")
 
     try? FileManager.default.removeItem(at: tmp)
 }
@@ -71,9 +73,9 @@ import Foundation
     let file = tmp.appendingPathComponent("commands.json")
     let json = """
     [
-      {"name":"One","description":"First","script":"date","icon":null,"shortcut":null},
-      {"name":"Two","description":"Second","script":"whoami","icon":null,"shortcut":null},
-      {"name":"Three","description":"Third","script":"pwd","icon":null,"shortcut":null}
+      {"name":"One","description":"First","section":"Alpha","script":"date","icon":null,"shortcut":null},
+      {"name":"Two","description":"Second","section":"Alpha","script":"whoami","icon":null,"shortcut":null},
+      {"name":"Three","description":"Third","section":"Beta","script":"pwd","icon":null,"shortcut":null}
     ]
     """.data(using: .utf8)!
     try json.write(to: file)

@@ -16,18 +16,12 @@ struct CommandCard: View {
                     .foregroundStyle(isSelected ? .white : .secondary)
                     .frame(width: 36, height: 36)
                     .background(isSelected ? Color.accentColor : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
 
-                VStack(spacing: 2) {
-                    Text(command.name)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                    Text(command.description)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2, reservesSpace: true)
-                        .multilineTextAlignment(.center)
-                }
+                Text(command.name)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
 
                 if let shortcut = command.shortcut {
                     Text(shortcut)
@@ -40,8 +34,9 @@ struct CommandCard: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
+            .frame(minHeight: 82, alignment: .top)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
 
             // Edit button on hover
             if isHovered {
@@ -51,23 +46,23 @@ struct CommandCard: View {
                     Image(systemName: "pencil")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 18, height: 18)
                         .background(.ultraThinMaterial)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.hover)
-                .padding(6)
+            .padding(5)
             }
         }
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 9))
         .overlay(alignment: .leading) {
             DropIndicatorBar(isVisible: showsDropIndicator)
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
                 .padding(.leading, 3)
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 9)
                 .strokeBorder(isSelected ? Color.accentColor.opacity(0.5) : isHovered ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1.5)
         )
         .contentShape(Rectangle())
@@ -93,21 +88,23 @@ struct AddCommandCard: View {
                 .frame(width: 36, height: 36)
 
             Text("Add Command")
-                .font(.caption.weight(.medium))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(isHovered ? .primary : .secondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 8)
+        .frame(minHeight: 82, alignment: .top)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 6)
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 9))
         .overlay(alignment: .leading) {
             DropIndicatorBar(isVisible: showsDropIndicator)
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
                 .padding(.leading, 3)
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 9)
                 .strokeBorder(
                     isSelected ? AnyShapeStyle(Color.accentColor.opacity(0.5)) : isHovered ? AnyShapeStyle(Color.primary.opacity(0.15)) : AnyShapeStyle(.quaternary),
                     style: StrokeStyle(lineWidth: 1.5, dash: isSelected || isHovered ? [] : [6])
