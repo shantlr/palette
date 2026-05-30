@@ -82,11 +82,15 @@ struct SettingsView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
-                    Text("⌘ ⇧ 6")
+                    Text("⌘ ⇧ 4")
                         .font(.system(.body, design: .monospaced))
                         .padding(8)
                         .background(.black.opacity(0.2))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                    Text("May require reassigning macOS screenshot shortcut.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(16)

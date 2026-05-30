@@ -19,6 +19,7 @@ enum ScreenBrushCropGeometry {
 final class ScreenBrushController: NSObject {
     private var panel: ScreenBrushOverlayPanel?
     private var isCursorHidden = false
+    private let previewController = ScreenBrushPreviewController()
 
     var isActive: Bool {
         panel?.isVisible == true
@@ -75,7 +76,8 @@ final class ScreenBrushController: NSObject {
             let finalImage = self.composite(base: screenshot, overlay: drawing, size: unionFrame.size)
             let croppedImage = self.crop(image: finalImage, to: cropRect ?? NSRect(origin: .zero, size: unionFrame.size), scale: renderScale)
             self.writeToPasteboard(croppedImage)
-            _ = self.saveImage(croppedImage)
+            let savedURL = self.saveImage(croppedImage)
+            self.previewController.show(image: croppedImage, fileURL: savedURL)
         }
     }
 
@@ -344,7 +346,7 @@ private final class ScreenBrushToolbarModel: ObservableObject {
             UserDefaults.standard.set(brushSize, forKey: Self.brushSizeDefaultsKey)
         }
     }
-    @Published var isSelectingArea = false
+    @Published var isSelectingArea = true
     @Published var hasSelection = false
 
     init() {

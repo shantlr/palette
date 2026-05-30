@@ -45,8 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.panel.toggle()
         }
 
-        // Global hotkey: Cmd + Shift + 6
-        screenBrushHotkeyID = hotkeyManager.register(keyCode: 22) { [weak self] in
+        // Global hotkey: Cmd + Shift + 4
+        screenBrushHotkeyID = hotkeyManager.register(keyCode: 21) { [weak self] in
             self?.screenBrushController.toggle()
         }
     }
