@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:palette}",
+      "name": "Debug Palette",
+      "target": "Palette",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug Palette"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:palette}",
+      "name": "Release Palette",
+      "target": "Palette",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release Palette"
+    }
+  ]
+}
