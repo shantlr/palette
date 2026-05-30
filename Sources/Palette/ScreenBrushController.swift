@@ -467,6 +467,12 @@ private final class ScreenBrushCanvasView: NSView {
             return
         }
 
+        if event.modifierFlags.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "z" {
+            undoLastStroke()
+            return
+        }
+
         if let characters = event.charactersIgnoringModifiers?.lowercased() {
             switch characters {
             case "s":
@@ -590,6 +596,12 @@ private final class ScreenBrushCanvasView: NSView {
         hidesCaptureDecorations = true
         needsDisplay = true
         displayIfNeeded()
+    }
+
+    private func undoLastStroke() {
+        guard !strokes.isEmpty else { return }
+        _ = strokes.popLast()
+        needsDisplay = true
     }
 
     private func drawSelectionOverlay() {
