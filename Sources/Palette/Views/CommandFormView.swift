@@ -135,7 +135,9 @@ struct CommandFormView: View {
                         section: section.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : section.trimmingCharacters(in: .whitespacesAndNewlines),
                         script: script,
                         icon: icon.isEmpty ? nil : icon,
-                        shortcut: existing?.shortcut
+                        shortcut: existing?.shortcut,
+                        tileRow: existing?.tileRow,
+                        tileColumn: existing?.tileColumn
                     )
                     onSave(command)
                 }

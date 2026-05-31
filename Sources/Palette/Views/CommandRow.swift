@@ -3,7 +3,8 @@ import SwiftUI
 struct CommandCard: View {
     let command: Command
     let isSelected: Bool
-    var showsDropIndicator: Bool = false
+    var isDropTarget: Bool = false
+    var isDragging: Bool = false
     let onEdit: () -> Void
 
     @State private var isHovered = false
@@ -56,16 +57,15 @@ struct CommandCard: View {
         }
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 9))
-        .overlay(alignment: .leading) {
-            DropIndicatorBar(isVisible: showsDropIndicator)
-                .padding(.vertical, 6)
-                .padding(.leading, 3)
-        }
         .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(isSelected ? Color.accentColor.opacity(0.5) : isHovered ? Color.primary.opacity(0.1) : Color.clear, lineWidth: 1.5)
+                .strokeBorder(
+                    isDropTarget ? Color.accentColor.opacity(0.9) : isSelected ? Color.accentColor.opacity(0.5) : isHovered ? Color.primary.opacity(0.1) : Color.clear,
+                    lineWidth: isDropTarget ? 2 : 1.5
+                )
         )
         .contentShape(Rectangle())
+        .opacity(isDragging ? 0.35 : 1)
         .onHover { hovering in
             isHovered = hovering
             if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
@@ -76,7 +76,6 @@ struct CommandCard: View {
 
 struct AddCommandCard: View {
     var isSelected: Bool = false
-    var showsDropIndicator: Bool = false
 
     @State private var isHovered = false
 
@@ -98,11 +97,6 @@ struct AddCommandCard: View {
         .padding(.horizontal, 6)
         .background(isSelected ? Color.accentColor.opacity(0.15) : isHovered ? Color.primary.opacity(0.06) : Color.gray.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 9))
-        .overlay(alignment: .leading) {
-            DropIndicatorBar(isVisible: showsDropIndicator)
-                .padding(.vertical, 6)
-                .padding(.leading, 3)
-        }
         .overlay(
             RoundedRectangle(cornerRadius: 9)
                 .strokeBorder(
@@ -119,14 +113,24 @@ struct AddCommandCard: View {
     }
 }
 
-struct DropIndicatorBar: View {
-    let isVisible: Bool
+struct EmptyCommandCell: View {
+    var isDropTarget: Bool = false
+    var isVisible: Bool = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: 2)
-            .fill(Color.accentColor.opacity(0.9))
-            .frame(width: 4)
-            .opacity(isVisible ? 1 : 0)
+            .fill(isVisible ? Color.primary.opacity(0.025) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9)
+                    .strokeBorder(
+                        isDropTarget ? AnyShapeStyle(Color.accentColor.opacity(0.9)) : AnyShapeStyle(.quaternary),
+                        style: StrokeStyle(lineWidth: isDropTarget ? 2 : 1, dash: isDropTarget ? [] : [6])
+                    )
+                    .opacity(isVisible ? 1 : 0)
+            )
+            .frame(minHeight: 98)
+            .animation(.easeInOut(duration: 0.12), value: isDropTarget)
             .animation(.easeInOut(duration: 0.12), value: isVisible)
     }
 }

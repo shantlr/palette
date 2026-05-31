@@ -24,7 +24,7 @@ import Foundation
 
 @Test func runnerExecutesCommand() async throws {
     let runner = CommandRunner()
-    let cmd = Command(name: "Test", description: "test", section: "Shell", script: "echo palette", icon: nil, shortcut: nil)
+    let cmd = Command(name: "Test", description: "test", section: "Shell", script: "echo palette", icon: nil, shortcut: nil, tileRow: 0, tileColumn: 0)
     let result = try await runner.run(cmd)
     #expect(result.output == "palette")
 }
