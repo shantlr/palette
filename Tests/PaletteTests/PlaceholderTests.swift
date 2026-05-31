@@ -15,3 +15,12 @@ import AppKit
     #expect(pixelRect.width == 600)
     #expect(pixelRect.height == 300)
 }
+
+@Test func bundledPNGOptimizerExistsForCurrentArchitecture() {
+    let executableURL = PNGOptimizer.bundledExecutableURL()
+
+    #expect(executableURL != nil)
+    if let executableURL {
+        #expect(FileManager.default.isExecutableFile(atPath: executableURL.path))
+    }
+}

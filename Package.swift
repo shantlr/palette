@@ -9,6 +9,9 @@ let package = Package(
             name: "Palette",
             path: "Sources/Palette",
             exclude: ["Info.plist"],
+            resources: [
+                .copy("Resources")
+            ],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",

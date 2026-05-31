@@ -7,6 +7,7 @@ final class ScreenBrushPreviewController: NSObject {
 
     private var previewPanel: ScreenshotPreviewPanel?
     private var dismissWorkItem: DispatchWorkItem?
+    var lastOptimizationResult: PNGOptimizationResult?
 
     func show(image: NSImage, fileURL: URL?) {
         let panel: ScreenshotPreviewPanel
@@ -25,7 +26,7 @@ final class ScreenBrushPreviewController: NSObject {
             panel = newPanel
         }
 
-        panel.update(image: image, fileURL: fileURL)
+        panel.update(image: image, fileURL: fileURL, optimizationResult: lastOptimizationResult)
         panel.positionInBottomRight()
         panel.orderFrontRegardless()
         scheduleAutoDismiss()
@@ -69,9 +70,7 @@ final class ScreenBrushPreviewController: NSObject {
     }
 
     private func writeTemporaryImage(_ image: NSImage) -> URL? {
-        guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+        guard let pngData = encodePNG(image) else {
             return nil
         }
 
@@ -83,6 +82,7 @@ final class ScreenBrushPreviewController: NSObject {
 
         do {
             try pngData.write(to: uniqueURL)
+            _ = PNGOptimizer.optimizeIfAvailable(fileURL: uniqueURL)
             return uniqueURL
         } catch {
             return nil
@@ -135,9 +135,10 @@ private final class ScreenshotPreviewPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    func update(image: NSImage, fileURL: URL?) {
+    func update(image: NSImage, fileURL: URL?, optimizationResult: PNGOptimizationResult?) {
         contentModel.image = image
         contentModel.fileURL = fileURL
+        contentModel.optimizationResult = optimizationResult
     }
 
     func positionInBottomRight() {
@@ -157,6 +158,7 @@ private final class ScreenshotPreviewPanel: NSPanel {
 private final class ScreenshotPreviewContentModel: ObservableObject {
     @Published var image = NSImage(size: NSSize(width: 1, height: 1))
     @Published var fileURL: URL?
+    @Published var optimizationResult: PNGOptimizationResult?
 }
 
 private struct ScreenshotPreviewCardView: View {
@@ -191,6 +193,13 @@ private struct ScreenshotPreviewCardView: View {
                         Text("Click to open editor")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
+
+                        if let optimizationResult = model.optimizationResult {
+                            Text("PNG optimized: \(ByteCountFormatter.string(fromByteCount: optimizationResult.savedBytes, countStyle: .file)) saved (\(String(format: "%.1f", optimizationResult.savedPercent))%)")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.green)
+                                .lineLimit(1)
+                        }
                     }
 
                     Spacer(minLength: 0)

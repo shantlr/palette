@@ -162,9 +162,7 @@ final class ScreenBrushController: NSObject {
     }
 
     private func saveImage(_ image: NSImage) -> URL? {
-        guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+        guard let pngData = encodePNG(image) else {
             return nil
         }
 
@@ -177,6 +175,8 @@ final class ScreenBrushController: NSObject {
 
         do {
             try pngData.write(to: desktopURL)
+            let optimizationResult = PNGOptimizer.optimizeIfAvailable(fileURL: desktopURL)
+            previewController.lastOptimizationResult = optimizationResult
             return desktopURL
         } catch {
             print("Failed to save screen brush capture: \(error.localizedDescription)")
