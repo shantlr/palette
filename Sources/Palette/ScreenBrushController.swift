@@ -170,7 +170,7 @@ final class ScreenBrushController: NSObject {
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HH-mm-ss"
-        let fileName = "palette-screen-brush-\(formatter.string(from: Date())).png"
+        let fileName = "palette_\(formatter.string(from: Date())).png"
         let desktopURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Desktop", isDirectory: true)
             .appendingPathComponent(fileName)
