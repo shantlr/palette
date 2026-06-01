@@ -15,6 +15,57 @@ enum ScreenBrushCropGeometry {
     }
 }
 
+struct ScreenBrushScreenDescriptor: Equatable {
+    let displayID: CGDirectDisplayID?
+    let frame: NSRect
+    let visibleFrame: NSRect
+    let backingScaleFactor: CGFloat
+}
+
+enum ScreenBrushTargetGeometry {
+    static func focusedScreen(
+        at point: NSPoint,
+        screens: [ScreenBrushScreenDescriptor],
+        fallback: ScreenBrushScreenDescriptor?
+    ) -> ScreenBrushScreenDescriptor? {
+        screens.first(where: { $0.frame.contains(point) }) ?? fallback ?? screens.first
+    }
+
+    static func defaultCaptureRect(focusedScreenFrame: NSRect, unionFrame: NSRect) -> NSRect {
+        NSRect(
+            x: focusedScreenFrame.origin.x - unionFrame.origin.x,
+            y: focusedScreenFrame.origin.y - unionFrame.origin.y,
+            width: focusedScreenFrame.width,
+            height: focusedScreenFrame.height
+        )
+    }
+
+    static func toolbarFrame(
+        toolbarSize: NSSize,
+        focusedVisibleFrame: NSRect,
+        unionFrame: NSRect,
+        inset: CGFloat = 24
+    ) -> NSRect {
+        let minX = focusedVisibleFrame.minX - unionFrame.minX + inset
+        let maxX = focusedVisibleFrame.maxX - unionFrame.minX - toolbarSize.width - inset
+        let originX = min(max((focusedVisibleFrame.midX - unionFrame.minX) - toolbarSize.width / 2, minX), maxX)
+        let originY = focusedVisibleFrame.maxY - unionFrame.minY - toolbarSize.height - inset
+
+        return NSRect(x: originX, y: originY, width: toolbarSize.width, height: toolbarSize.height)
+    }
+
+    static func previewOrigin(
+        panelSize: NSSize,
+        focusedVisibleFrame: NSRect,
+        inset: CGFloat = 20
+    ) -> NSPoint {
+        NSPoint(
+            x: focusedVisibleFrame.maxX - panelSize.width - inset,
+            y: focusedVisibleFrame.minY + inset
+        )
+    }
+}
+
 @MainActor
 final class ScreenBrushController: NSObject {
     private var panel: ScreenBrushOverlayPanel?
@@ -57,7 +108,8 @@ final class ScreenBrushController: NSObject {
         let unionFrame = panel.unionFrame
         let renderScale = panel.renderScale
         let drawing = panel.drawingImage(scale: renderScale)
-        let cropRect = panel.captureRect
+        let cropRect = panel.captureRect ?? panel.defaultCaptureRect
+        let focusedVisibleFrame = panel.focusedVisibleFrame
         panel.hideFromScreen()
         self.panel = nil
 
@@ -74,10 +126,10 @@ final class ScreenBrushController: NSObject {
             }
 
             let finalImage = self.composite(base: screenshot, overlay: drawing, size: unionFrame.size)
-            let croppedImage = self.crop(image: finalImage, to: cropRect ?? NSRect(origin: .zero, size: unionFrame.size), scale: renderScale)
+            let croppedImage = self.crop(image: finalImage, to: cropRect, scale: renderScale)
             self.writeToPasteboard(croppedImage)
             let savedURL = self.saveImage(croppedImage)
-            self.previewController.show(image: croppedImage, fileURL: savedURL)
+            self.previewController.show(image: croppedImage, fileURL: savedURL, focusedVisibleFrame: focusedVisibleFrame)
         }
     }
 
@@ -237,6 +289,8 @@ final class ScreenBrushController: NSObject {
 private final class ScreenBrushOverlayPanel: NSPanel {
     let unionFrame: NSRect
     let renderScale: CGFloat
+    let defaultCaptureRect: NSRect
+    let focusedVisibleFrame: NSRect
     var captureRect: NSRect? {
         canvasView.captureRect
     }
@@ -249,13 +303,55 @@ private final class ScreenBrushOverlayPanel: NSPanel {
         let unionFrame = NSScreen.screens.map(\.frame).reduce(into: NSRect.null) { partial, frame in
             partial = partial.union(frame)
         }
-        self.unionFrame = unionFrame
-        self.renderScale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 1
-        self.canvasView = ScreenBrushCanvasView(frame: NSRect(origin: .zero, size: unionFrame.size), toolbarModel: toolbarModel)
-        self.rootView = ScreenBrushRootView(frame: NSRect(origin: .zero, size: unionFrame.size), canvasView: canvasView, toolbarModel: toolbarModel)
+        let screens = NSScreen.screens.map { screen in
+            ScreenBrushScreenDescriptor(
+                displayID: (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map {
+                    CGDirectDisplayID($0.uint32Value)
+                },
+                frame: screen.frame,
+                visibleFrame: screen.visibleFrame,
+                backingScaleFactor: screen.backingScaleFactor
+            )
+        }
+        let fallbackScreen = NSScreen.main.map { screen in
+            ScreenBrushScreenDescriptor(
+                displayID: (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map {
+                    CGDirectDisplayID($0.uint32Value)
+                },
+                frame: screen.frame,
+                visibleFrame: screen.visibleFrame,
+                backingScaleFactor: screen.backingScaleFactor
+            )
+        }
+        let focusedScreen = ScreenBrushTargetGeometry.focusedScreen(
+            at: NSEvent.mouseLocation,
+            screens: screens,
+            fallback: fallbackScreen
+        ) ?? ScreenBrushScreenDescriptor(
+            displayID: nil,
+            frame: unionFrame,
+            visibleFrame: unionFrame,
+            backingScaleFactor: NSScreen.main?.backingScaleFactor ?? 1
+        )
+
+        self.unionFrame = focusedScreen.frame
+        self.renderScale = focusedScreen.backingScaleFactor
+        self.defaultCaptureRect = ScreenBrushTargetGeometry.defaultCaptureRect(
+            focusedScreenFrame: focusedScreen.frame,
+            unionFrame: focusedScreen.frame
+        )
+        self.focusedVisibleFrame = focusedScreen.visibleFrame
+        self.canvasView = ScreenBrushCanvasView(frame: NSRect(origin: .zero, size: focusedScreen.frame.size), toolbarModel: toolbarModel)
+        self.rootView = ScreenBrushRootView(
+            frame: NSRect(origin: .zero, size: focusedScreen.frame.size),
+            canvasView: canvasView,
+            toolbarModel: toolbarModel,
+            focusedVisibleFrame: focusedScreen.visibleFrame,
+            unionFrame: focusedScreen.frame
+        )
 
         super.init(
-            contentRect: unionFrame,
+            contentRect: focusedScreen.frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -307,10 +403,20 @@ private final class ScreenBrushOverlayPanel: NSPanel {
 private final class ScreenBrushRootView: NSView {
     private let canvasView: ScreenBrushCanvasView
     private let toolbarView: NSHostingView<ScreenBrushToolbarView>
+    private let focusedVisibleFrame: NSRect
+    private let unionFrame: NSRect
 
-    init(frame frameRect: NSRect, canvasView: ScreenBrushCanvasView, toolbarModel: ScreenBrushToolbarModel) {
+    init(
+        frame frameRect: NSRect,
+        canvasView: ScreenBrushCanvasView,
+        toolbarModel: ScreenBrushToolbarModel,
+        focusedVisibleFrame: NSRect,
+        unionFrame: NSRect
+    ) {
         self.canvasView = canvasView
         self.toolbarView = NSHostingView(rootView: ScreenBrushToolbarView(model: toolbarModel))
+        self.focusedVisibleFrame = focusedVisibleFrame
+        self.unionFrame = unionFrame
         super.init(frame: frameRect)
 
         wantsLayer = true
@@ -328,11 +434,10 @@ private final class ScreenBrushRootView: NSView {
         canvasView.frame = bounds
 
         let toolbarSize = toolbarView.fittingSize
-        toolbarView.frame = NSRect(
-            x: max(24, (bounds.width - toolbarSize.width) / 2),
-            y: bounds.height - toolbarSize.height - 24,
-            width: toolbarSize.width,
-            height: toolbarSize.height
+        toolbarView.frame = ScreenBrushTargetGeometry.toolbarFrame(
+            toolbarSize: toolbarSize,
+            focusedVisibleFrame: focusedVisibleFrame,
+            unionFrame: unionFrame
         )
     }
 }

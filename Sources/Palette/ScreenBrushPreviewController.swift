@@ -9,7 +9,7 @@ final class ScreenBrushPreviewController: NSObject {
     private var dismissWorkItem: DispatchWorkItem?
     var lastOptimizationResult: PNGOptimizationResult?
 
-    func show(image: NSImage, fileURL: URL?) {
+    func show(image: NSImage, fileURL: URL?, focusedVisibleFrame: NSRect) {
         let panel: ScreenshotPreviewPanel
         if let previewPanel {
             panel = previewPanel
@@ -27,7 +27,7 @@ final class ScreenBrushPreviewController: NSObject {
         }
 
         panel.update(image: image, fileURL: fileURL, optimizationResult: lastOptimizationResult)
-        panel.positionInBottomRight()
+        panel.positionInBottomRight(focusedVisibleFrame: focusedVisibleFrame)
         panel.orderFrontRegardless()
         scheduleAutoDismiss()
     }
@@ -141,11 +141,13 @@ private final class ScreenshotPreviewPanel: NSPanel {
         contentModel.optimizationResult = optimizationResult
     }
 
-    func positionInBottomRight() {
-        let screenFrame = NSScreen.main?.visibleFrame ?? NSScreen.screens.first?.visibleFrame ?? .zero
-        let x = screenFrame.maxX - Self.panelSize.width - 20
-        let y = screenFrame.minY + 20
-        setFrameOrigin(NSPoint(x: x, y: y))
+    func positionInBottomRight(focusedVisibleFrame: NSRect) {
+        setFrameOrigin(
+            ScreenBrushTargetGeometry.previewOrigin(
+                panelSize: Self.panelSize,
+                focusedVisibleFrame: focusedVisibleFrame
+            )
+        )
     }
 
     override func mouseUp(with event: NSEvent) {
